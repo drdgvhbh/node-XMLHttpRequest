@@ -1,15 +1,15 @@
-var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+import { XMLHttpRequest } from 'xmlhttprequest-w3c';
 
-var xhr = new XMLHttpRequest();
+const xhr = new XMLHttpRequest();
 
 xhr.onreadystatechange = function() {
-	console.log("State: " + this.readyState);
-	
-	if (this.readyState === 4) {
-		console.log("Complete.\nBody length: " + this.responseText.length);
-		console.log("Body:\n" + this.responseText);
-	}
+  console.log('State: ' + this.readyState);
+
+  if (this.readyState === 4) {
+    console.log('Complete.\nBody length: ' + this.responseText.length);
+    console.log('Body:\n' + this.responseText);
+  }
 };
 
-xhr.open("GET", "http://driverdan.com");
+xhr.open('GET', 'http://driverdan.com');
 xhr.send();

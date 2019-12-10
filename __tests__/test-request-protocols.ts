@@ -1,5 +1,5 @@
 import { equal } from 'assert';
-import { XMLHttpRequest } from '../lib/XMLHttpRequest';
+import { XMLHttpRequest } from '../src/XMLHttpRequest';
 
 test('request-protocols', () => {
   let xhr;
