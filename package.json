@@ -30,6 +30,7 @@
   "main": "./lib/XMLHttpRequest.js",
   "devDependencies": {
     "@types/jest": "^24.0.23",
+    "@types/node": "^12.12.16",
     "@typescript-eslint/eslint-plugin": "^2.11.0",
     "@typescript-eslint/parser": "^2.11.0",
     "eslint": "^6.7.2",
@@ -39,5 +40,11 @@
     "prettier": "^1.19.1",
     "ts-jest": "^24.2.0",
     "typescript": "^3.7.3"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "get-port": "^5.0.0"
   }
 }
