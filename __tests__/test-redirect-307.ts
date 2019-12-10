@@ -1,4 +1,4 @@
-import { XMLHttpRequest } from '../lib/XMLHttpRequest';
+import { XMLHttpRequest } from '../src/XMLHttpRequest';
 import { createServer } from 'http';
 import getPort from 'get-port';
 

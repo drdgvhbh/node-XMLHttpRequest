@@ -1,4 +1,4 @@
-import { XMLHttpRequest } from '../lib/XMLHttpRequest';
+import { XMLHttpRequest } from '../src/XMLHttpRequest';
 import { createServer } from 'http';
 import getPort from 'get-port';
 
@@ -60,7 +60,7 @@ test('headers', async (done) => {
   xhr.setRequestHeader('X-Test2', 'Foobar1');
   xhr.setRequestHeader('X-Test2', 'Foobar2');
   // Invalid header
-  expect(() => xhr.setRequestHeader('Content-Length', 0)).toThrowError();
+  expect(() => xhr.setRequestHeader('Content-Length', '0')).toThrowError();
   // Allowed header outside of specs
   xhr.setRequestHeader('user-agent', 'node-XMLHttpRequest-test');
   // Test getRequestHeader

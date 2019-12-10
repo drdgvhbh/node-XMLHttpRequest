@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { XMLHttpRequest } from '../lib/XMLHttpRequest';
+import { XMLHttpRequest } from '../src/XMLHttpRequest';
 import getPort from 'get-port';
 
 test('streaming', async (done) => {
