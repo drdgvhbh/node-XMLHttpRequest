@@ -71,6 +71,8 @@ export class XMLHttpRequest {
 
   private _statusText: string;
 
+  private _responseType: XMLHttpRequestResponseType;
+
   private readonly listeners: Record<string, Function[]>;
 
   public readonly UNSENT = 0;
@@ -97,6 +99,7 @@ export class XMLHttpRequest {
     this.settings = {};
     this.disableHeaderCheck = false;
     this._responseText = '';
+    this._responseType = '';
     this._responseXML = null;
     this.onreadystatechange = null;
     this._status = 0;
@@ -122,6 +125,10 @@ export class XMLHttpRequest {
 
   public get status(): number {
     return this._status;
+  }
+
+  public get responseType(): XMLHttpRequestResponseType {
+    return this._responseType;
   }
 
   /**
