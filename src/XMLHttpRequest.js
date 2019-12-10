@@ -10,7 +10,63 @@ import {
   unlinkSync,
 } from 'fs';
 
+const forbiddenRequestHeaders = [
+  'accept-charset',
+  'accept-encoding',
+  'access-control-request-headers',
+  'access-control-request-method',
+  'connection',
+  'content-length',
+  'content-transfer-encoding',
+  'cookie',
+  'cookie2',
+  'date',
+  'expect',
+  'host',
+  'keep-alive',
+  'origin',
+  'referer',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+  'via',
+];
+
+const forbiddenRequestMethods = ['TRACE', 'TRACK', 'CONNECT'];
+
+const defaultHeaders = {
+  'User-Agent': 'node-XMLHttpRequest',
+  Accept: '*/*',
+};
+
 export class XMLHttpRequest {
+  /**
+   * @public
+   * @readonly
+   */
+  UNSENT = 0;
+  /**
+   * @public
+   * @readonly
+   */
+  OPENED = 1;
+  /**
+   * @public
+   * @readonly
+   */
+  HEADERS_RECEIVED = 2;
+  /**
+   * @public
+   * @readonly
+   */
+  LOADING = 3;
+  /**
+   * @public
+   * @readonly
+   */
+  DONE = 4;
+
   constructor() {
     /**
      * Private variables
@@ -25,53 +81,17 @@ export class XMLHttpRequest {
     // Not part of XHR specs.
     let disableHeaderCheck = false;
     // Set some default headers
-    const defaultHeaders = {
-      'User-Agent': 'node-XMLHttpRequest',
-      Accept: '*/*',
-    };
+
     let headers = {};
     const headersCase = {};
-    // These headers are not user setable.
-    // The following are allowed but banned in the spec:
-    // * user-agent
-    const forbiddenRequestHeaders = [
-      'accept-charset',
-      'accept-encoding',
-      'access-control-request-headers',
-      'access-control-request-method',
-      'connection',
-      'content-length',
-      'content-transfer-encoding',
-      'cookie',
-      'cookie2',
-      'date',
-      'expect',
-      'host',
-      'keep-alive',
-      'origin',
-      'referer',
-      'te',
-      'trailer',
-      'transfer-encoding',
-      'upgrade',
-      'via',
-    ];
-    // These request methods are not allowed
-    const forbiddenRequestMethods = ['TRACE', 'TRACK', 'CONNECT'];
+
     // Send flag
     let sendFlag = false;
     // Error flag, used when errors occur or abort is called
     let errorFlag = false;
     // Event listeners
     const listeners = {};
-    /**
-     * Constants
-     */
-    this.UNSENT = 0;
-    this.OPENED = 1;
-    this.HEADERS_RECEIVED = 2;
-    this.LOADING = 3;
-    this.DONE = 4;
+
     /**
      * Public vars
      */
@@ -283,7 +303,7 @@ export class XMLHttpRequest {
           try {
             this.responseText = readFileSync(url.pathname, 'utf8');
             this.status = 200;
-            setState(self.DONE);
+            setState(this.DONE);
           } catch (e) {
             this.handleError(e);
           }
@@ -493,7 +513,7 @@ export class XMLHttpRequest {
           response = resp.data;
           self.status = resp.data.statusCode;
           self.responseText = resp.data.text;
-          setState(self.DONE);
+          setState(this.DONE);
         }
       }
     };
@@ -572,7 +592,7 @@ export class XMLHttpRequest {
      *
      * @param int state New state
      */
-    var setState = function(state) {
+    const setState = function(state) {
       if (state == self.LOADING || self.readyState !== state) {
         self.readyState = state;
         if (
