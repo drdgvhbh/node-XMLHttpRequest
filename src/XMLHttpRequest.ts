@@ -131,6 +131,13 @@ export class XMLHttpRequest {
     return this._responseType;
   }
 
+  public set responseType(type: XMLHttpRequestResponseType) {
+    if (type !== 'document') {
+      // do something
+    }
+    this._responseType = type;
+  }
+
   /**
    * Sends the request to the server.
    *
