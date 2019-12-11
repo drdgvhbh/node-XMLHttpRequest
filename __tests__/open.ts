@@ -34,4 +34,10 @@ describe('open', () => {
       SecurityErrDOMException,
     );
   });
+
+  it('should throw a syntax error if url is malformed', () => {
+    expect(() => xhr.open('GET', 'dsadsadsafafa')).toThrowError(
+      SyntaxErrDOMException,
+    );
+  });
 });
