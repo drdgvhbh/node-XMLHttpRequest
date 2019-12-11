@@ -35,7 +35,7 @@ export abstract class DOMException extends Error {
     super(message);
     this.message = message;
     this.name = name;
-    Error.captureStackTrace(this);
+    Error.captureStackTrace(this, DOMException);
   }
 }
 
@@ -45,6 +45,7 @@ export class IndexSizeDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INDEX_SIZE_ERR;
+    Error.captureStackTrace(this, IndexSizeDOMException);
   }
 }
 
@@ -54,6 +55,7 @@ export class StringSizeDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.DOMSTRING_SIZE_ERR;
+    Error.captureStackTrace(this, StringSizeDOMException);
   }
 }
 
@@ -63,6 +65,7 @@ export class HierarchyRequestDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.HIERARCHY_REQUEST_ERR;
+    Error.captureStackTrace(this, HierarchyRequestDOMException);
   }
 }
 
@@ -72,6 +75,7 @@ export class WrongDocumentDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.WRONG_DOCUMENT_ERR;
+    Error.captureStackTrace(this, WrongDocumentDOMException);
   }
 }
 
@@ -81,6 +85,7 @@ export class InvalidCharacterDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INVALID_CHARACTER_ERR;
+    Error.captureStackTrace(this, InvalidCharacterDOMException);
   }
 }
 
@@ -90,6 +95,7 @@ export class NoDataAllowedDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NO_DATA_ALLOWED_ERR;
+    Error.captureStackTrace(this, NoDataAllowedDOMException);
   }
 }
 
@@ -99,6 +105,7 @@ export class NoDataModificationAllowedDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NO_MODIFICATION_ALLOWED_ERR;
+    Error.captureStackTrace(this, NoDataModificationAllowedDOMException);
   }
 }
 
@@ -108,6 +115,7 @@ export class NotFoundDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NOT_FOUND_ERR;
+    Error.captureStackTrace(this, NotFoundDOMException);
   }
 }
 
@@ -117,6 +125,7 @@ export class NotSupportedDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NOT_SUPPORTED_ERR;
+    Error.captureStackTrace(this, NotSupportedDOMException);
   }
 }
 
@@ -126,6 +135,7 @@ export class InUseAttributeDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INUSE_ATTRIBUTE_ERR;
+    Error.captureStackTrace(this, InUseAttributeDOMException);
   }
 }
 
@@ -135,6 +145,7 @@ export class InvalidStateDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INVALID_STATE_ERR;
+    Error.captureStackTrace(this, InvalidStateDOMException);
   }
 }
 
@@ -144,6 +155,7 @@ export class SyntaxErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.SYNTAX_ERR;
+    Error.captureStackTrace(this, SyntaxErrDOMException);
   }
 }
 
@@ -153,6 +165,7 @@ export class InvalidModificationDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INVALID_MODIFICATION_ERR;
+    Error.captureStackTrace(this, InvalidModificationDOMException);
   }
 }
 
@@ -162,6 +175,7 @@ export class NamespaceErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NAMESPACE_ERR;
+    Error.captureStackTrace(this, NamespaceErrDOMException);
   }
 }
 
@@ -171,6 +185,7 @@ export class InvalidAccessDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INVALID_ACCESS_ERR;
+    Error.captureStackTrace(this, InvalidAccessDOMException);
   }
 }
 
@@ -180,6 +195,7 @@ export class ValidationErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.VALIDATION_ERR;
+    Error.captureStackTrace(this, ValidationErrDOMException);
   }
 }
 
@@ -189,6 +205,7 @@ export class TypeMismatchDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.TYPE_MISMATCH_ERR;
+    Error.captureStackTrace(this, TypeMismatchDOMException);
   }
 }
 
@@ -198,6 +215,7 @@ export class SecurityErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.SECURITY_ERR;
+    Error.captureStackTrace(this, SecurityErrDOMException);
   }
 }
 
@@ -207,6 +225,7 @@ export class NetworkErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.NETWORK_ERR;
+    Error.captureStackTrace(this, NetworkErrDOMException);
   }
 }
 
@@ -216,6 +235,7 @@ export class AbortErrDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.ABORT_ERR;
+    Error.captureStackTrace(this, AbortErrDOMException);
   }
 }
 
@@ -225,6 +245,7 @@ export class UrlMismatchDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.URL_MISMATCH_ERR;
+    Error.captureStackTrace(this, UrlMismatchDOMException);
   }
 }
 
@@ -234,6 +255,7 @@ export class QuotaExceededDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.QUOTA_EXCEEDED_ERR;
+    Error.captureStackTrace(this, QuotaExceededDOMException);
   }
 }
 
@@ -243,6 +265,7 @@ export class TimeoutDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.TIMEOUT_ERR;
+    Error.captureStackTrace(this, TimeoutDOMException);
   }
 }
 
@@ -252,6 +275,7 @@ export class InvalidNodeTypeDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.INVALID_NODE_TYPE_ERR;
+    Error.captureStackTrace(this, InvalidNodeTypeDOMException);
   }
 }
 
@@ -261,5 +285,6 @@ export class DataCloneNodeTypeDOMException extends DOMException {
   constructor(message = '', name = 'Error') {
     super(message, name);
     this.code = this.DATA_CLONE_ERR;
+    Error.captureStackTrace(this, DataCloneNodeTypeDOMException);
   }
 }
