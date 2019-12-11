@@ -1,5 +1,7 @@
 # node-XMLHttpRequest #
 
+![actions-badge](https://github.com/drdgvhbh/node-XMLHttpRequest/workflows/build/badge.svg)
+
 node-XMLHttpRequest is a wrapper for the built-in http client to emulate the
 browser XMLHttpRequest object.
 
