@@ -1,10 +1,10 @@
 {
-  "name": "xmlhttprequest",
-  "description": "XMLHttpRequest for Node",
-  "version": "1.8.0",
+  "name": "xmlhttprequest-w3c",
+  "description": "W3C Compliant XMLHttpRequest for Node",
+  "version": "1.8.1",
   "author": {
-    "name": "Dan DeFelippi",
-    "url": "http://driverdan.com"
+    "name": "Ryan Lee",
+    "url": "https://github.com/drdgvhbh/node-XMLHttpRequest"
   },
   "keywords": [
     "xhr",
@@ -13,19 +13,19 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/driverdan/node-XMLHttpRequest.git"
+    "url": "git@github.com:drdgvhbh/node-XMLHttpRequest.git"
   },
   "browser": {
     "fs": false,
     "child_process": false
   },
-  "bugs": "http://github.com/driverdan/node-XMLHttpRequest/issues",
+  "bugs": "https://github.com/drdgvhbh/node-XMLHttpRequest/issues",
   "engines": {
     "node": ">=6"
   },
   "directories": {
     "lib": "./lib",
-    "example": "./example"
+    "example": "./demo"
   },
   "main": "./lib/index.js",
   "devDependencies": {
@@ -46,6 +46,7 @@
     "prettier": "^1.19.1",
     "rimraf": "^3.0.0",
     "ts-jest": "^24.2.0",
+    "get-port": "^5.0.0",
     "typescript": "^3.7.3"
   },
   "scripts": {
@@ -56,8 +57,5 @@
     "lint": "eslint \"./**/*.{ts,js}\"",
     "lint:fix": "eslint --fix \"./**/*.{ts,js}\"",
     "test": "jest"
-  },
-  "dependencies": {
-    "get-port": "^5.0.0"
   }
 }
