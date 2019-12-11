@@ -21,7 +21,7 @@
   },
   "bugs": "http://github.com/driverdan/node-XMLHttpRequest/issues",
   "engines": {
-    "node": ">=0.4.0"
+    "node": ">=6"
   },
   "directories": {
     "lib": "./lib",
