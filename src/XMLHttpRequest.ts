@@ -74,6 +74,8 @@ export class XMLHttpRequest {
 
   private _responseType: XMLHttpRequestResponseType;
 
+  private _timeout: number;
+
   private readonly listeners: Record<string, Function[]>;
 
   public readonly UNSENT = 0;
@@ -104,6 +106,7 @@ export class XMLHttpRequest {
     this._responseXML = null;
     this.onreadystatechange = null;
     this._status = 0;
+    this._timeout = 0;
     this._statusText = '';
     this.withCredentials = false;
   }
@@ -149,6 +152,14 @@ export class XMLHttpRequest {
       return '';
     }
     return this.response.url || '';
+  }
+
+  public get timeout(): number {
+    return this._timeout;
+  }
+
+  public set timeout(t: number) {
+    this._timeout = t;
   }
 
   /**
