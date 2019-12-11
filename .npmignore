@@ -1,4 +1,12 @@
-example
-tests
-
-autotest.watchr
+__tests__/**/*
+example/**/*
+.github/**/*
+.babelrc
+.eslintignore
+.eslintrc.yml
+.gitignore
+.prettierignore
+.prettierrc
+jest.config.js
+src
+tsconfig.json
