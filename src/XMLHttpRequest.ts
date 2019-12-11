@@ -17,29 +17,6 @@ import {
 import * as Methods from './methods';
 import { URL } from 'url';
 
-const forbiddenRequestHeaders = [
-  'accept-charset',
-  'accept-encoding',
-  'access-control-request-headers',
-  'access-control-request-method',
-  'connection',
-  'content-length',
-  'content-transfer-encoding',
-  'cookie',
-  'cookie2',
-  'date',
-  'expect',
-  'host',
-  'keep-alive',
-  'origin',
-  'referer',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-  'via',
-];
-
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
   Accept: '*/*',
@@ -51,8 +28,6 @@ export class XMLHttpRequest {
   private response: http.IncomingMessage | undefined | null;
 
   private settings: Record<string, any>;
-
-  private disableHeaderCheck: boolean;
 
   private headers: Record<string, string>;
 
@@ -100,7 +75,6 @@ export class XMLHttpRequest {
     this.headersCase = {};
     this.listeners = {};
     this.settings = {};
-    this.disableHeaderCheck = false;
     this._responseText = '';
     this._responseType = '';
     this._responseXML = null;
@@ -383,8 +357,8 @@ export class XMLHttpRequest {
         resp.on('end', () => {
           if (this.sendFlag) {
             // Discard the end event if the connection has been aborted
-            this.setState(this.DONE);
             this.sendFlag = false;
+            this.setState(this.DONE);
           }
         });
         resp.on('error', (error) => {
@@ -582,9 +556,9 @@ export class XMLHttpRequest {
       throw new InvalidStateDOMException('state is not opened');
     }
 
-    if (!this.isAllowedHttpHeader(header)) {
+    /*     if (!this.isAllowedHttpHeader(header)) {
       throw new Error('Refused to set unsafe header "' + header + '"');
-    }
+    } */
     if (this.sendFlag) {
       throw new Error('INVALID_STATE_ERR: send flag is true');
     }
@@ -593,25 +567,6 @@ export class XMLHttpRequest {
     this.headers[header] = this.headers[header]
       ? this.headers[header] + ', ' + value
       : value;
-  }
-
-  /**
-   * Disables or enables isAllowedHttpHeader() check the request. Enabled by default.
-   * This does not conform to the W3C spec.
-   *
-   * @public
-   * @param {boolean} state Enable or disable header checking.
-   */
-  public setDisableHeaderCheck(state: boolean): void {
-    this.disableHeaderCheck = state;
-  }
-
-  private isAllowedHttpHeader(header: string): boolean {
-    return (
-      this.disableHeaderCheck ||
-      (Boolean(header) &&
-        forbiddenRequestHeaders.indexOf(header.toLowerCase()) === -1)
-    );
   }
 
   private setState(state: number): void {

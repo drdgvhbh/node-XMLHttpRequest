@@ -59,8 +59,7 @@ test('headers', async (done) => {
   xhr.setRequestHeader('X-Test', 'Foobar');
   xhr.setRequestHeader('X-Test2', 'Foobar1');
   xhr.setRequestHeader('X-Test2', 'Foobar2');
-  // Invalid header
-  expect(() => xhr.setRequestHeader('Content-Length', '0')).toThrowError();
+
   // Allowed header outside of specs
   xhr.setRequestHeader('user-agent', 'node-XMLHttpRequest-test');
   // Test getRequestHeader
@@ -73,7 +72,6 @@ test('headers', async (done) => {
   expect('').toEqual(xhr.getRequestHeader('Content-Length'));
 
   // Test allowing all headers
-  xhr.setDisableHeaderCheck(true);
   xhr.setRequestHeader('Referer', 'http://github.com');
 
   expect('http://github.com').toEqual(xhr.getRequestHeader('Referer'));
