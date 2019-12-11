@@ -144,6 +144,13 @@ export class XMLHttpRequest {
     this._responseType = type;
   }
 
+  public get responseURL(): string {
+    if (!this.response) {
+      return '';
+    }
+    return this.response.url || '';
+  }
+
   /**
    * Sends the request to the server.
    *
