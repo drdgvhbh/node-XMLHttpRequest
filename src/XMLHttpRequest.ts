@@ -9,7 +9,13 @@ import {
   existsSync,
   unlinkSync,
 } from 'fs';
-import { InvalidStateDOMException } from './DOMException';
+import {
+  InvalidStateDOMException,
+  SyntaxErrDOMException,
+  SecurityErrDOMException,
+} from './DOMException';
+import * as Methods from './methods';
+import { URL } from 'url';
 
 const forbiddenRequestHeaders = [
   'accept-charset',
@@ -34,15 +40,9 @@ const forbiddenRequestHeaders = [
   'via',
 ];
 
-const forbiddenRequestMethods = ['TRACE', 'TRACK', 'CONNECT'];
-
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
   Accept: '*/*',
-};
-
-const isAllowedHttpMethod = (method: string): boolean => {
-  return Boolean(method) && forbiddenRequestMethods.indexOf(method) === -1;
 };
 
 export class XMLHttpRequest {
@@ -160,6 +160,38 @@ export class XMLHttpRequest {
 
   public set timeout(t: number) {
     this._timeout = t;
+  }
+
+  public open(
+    method: string,
+    url: string,
+    async = true,
+    user: string | null = null,
+    password: string | null = null,
+  ): void {
+    if (!Methods.isValid(method)) {
+      throw new SyntaxErrDOMException('method is not a valid method');
+    }
+    if (Methods.isForbidden(method)) {
+      throw new SecurityErrDOMException('method is forbidden');
+    }
+
+    try {
+      this.settings = {
+        method: Methods.normalize(method),
+        url: new URL(url).toString(),
+        async,
+        user: user,
+        password: password,
+      };
+    } catch (err) {
+      throw new SyntaxErrDOMException('invalid url');
+    }
+
+    this.abort();
+    this.errorFlag = false;
+
+    this.setState(this.OPENED);
   }
 
   /**
@@ -574,29 +606,6 @@ export class XMLHttpRequest {
    */
   public setDisableHeaderCheck(state: boolean): void {
     this.disableHeaderCheck = state;
-  }
-
-  public open(
-    method: string,
-    url: string,
-    async?: boolean,
-    user?: string,
-    password?: string,
-  ): void {
-    this.abort();
-    this.errorFlag = false;
-
-    if (!isAllowedHttpMethod(method)) {
-      throw new Error('SecurityError: Request method not allowed');
-    }
-    this.settings = {
-      method: method,
-      url: url.toString(),
-      async: typeof async !== 'boolean' ? true : async,
-      user: user || null,
-      password: password || null,
-    };
-    this.setState(this.OPENED);
   }
 
   private isAllowedHttpHeader(header: string): boolean {

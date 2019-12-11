@@ -37,7 +37,7 @@ describe('response-type', () => {
   });
 
   it('should throw an "InvalidStateError" DOMException if state is done', async (done) => {
-    xhr.open('GET', `http://localhost:${serverUrl}`);
+    xhr.open('GET', serverUrl);
     xhr.send();
 
     xhr.onreadystatechange = () => {
