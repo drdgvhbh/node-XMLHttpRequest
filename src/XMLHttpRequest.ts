@@ -579,9 +579,7 @@ export class XMLHttpRequest {
 
   public setRequestHeader(header: string, value: string): void {
     if (this.readyState !== this.OPENED) {
-      throw new Error(
-        'INVALID_STATE_ERR: setRequestHeader can only be called when state is OPEN',
-      );
+      throw new InvalidStateDOMException('state is not opened');
     }
 
     if (!this.isAllowedHttpHeader(header)) {
