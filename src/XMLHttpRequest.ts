@@ -12,6 +12,7 @@ import {
 import {
   InvalidStateDOMException,
   SyntaxErrDOMException,
+  SecurityErrDOMException,
 } from './DOMException';
 import * as Methods from './methods';
 
@@ -38,15 +39,9 @@ const forbiddenRequestHeaders = [
   'via',
 ];
 
-const forbiddenRequestMethods = ['TRACE', 'TRACK', 'CONNECT'];
-
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
   Accept: '*/*',
-};
-
-const isAllowedHttpMethod = (method: string): boolean => {
-  return Boolean(method) && forbiddenRequestMethods.indexOf(method) === -1;
 };
 
 export class XMLHttpRequest {
@@ -593,8 +588,8 @@ export class XMLHttpRequest {
     if (!Methods.isValid(method)) {
       throw new SyntaxErrDOMException('method is not a valid method');
     }
-    if (!isAllowedHttpMethod(method)) {
-      throw new Error('SecurityError: Request method not allowed');
+    if (Methods.isForbidden(method)) {
+      throw new SecurityErrDOMException('method is forbidden');
     }
     this.settings = {
       method: method,
