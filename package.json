@@ -1,7 +1,7 @@
 {
   "name": "xmlhttprequest-w3c",
   "description": "W3C Compliant XMLHttpRequest for Node",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "author": {
     "name": "Ryan Lee",
     "url": "https://github.com/drdgvhbh/node-XMLHttpRequest"
@@ -51,7 +51,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm run clean && npm run build",
-    "postinstall": "npm run build",
+    "prepare": "npm run build",
     "clean": "rimraf lib",
     "build": "tsc",
     "lint": "eslint \"./**/*.{ts,js}\"",
