@@ -49,7 +49,7 @@
     "typescript": "^3.7.3"
   },
   "scripts": {
-    "prepack": "npm run clean && npm run build",
+    "prepublishOnly": "npm run clean && npm run build",
     "postinstall": "npm run build",
     "clean": "rimraf lib",
     "build": "tsc",
