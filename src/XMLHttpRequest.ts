@@ -9,7 +9,11 @@ import {
   existsSync,
   unlinkSync,
 } from 'fs';
-import { InvalidStateDOMException } from './DOMException';
+import {
+  InvalidStateDOMException,
+  SyntaxErrDOMException,
+} from './DOMException';
+import * as Methods from './methods';
 
 const forbiddenRequestHeaders = [
   'accept-charset',
@@ -586,6 +590,9 @@ export class XMLHttpRequest {
     this.abort();
     this.errorFlag = false;
 
+    if (!Methods.isValid(method)) {
+      throw new SyntaxErrDOMException('method is not a valid method');
+    }
     if (!isAllowedHttpMethod(method)) {
       throw new Error('SecurityError: Request method not allowed');
     }
