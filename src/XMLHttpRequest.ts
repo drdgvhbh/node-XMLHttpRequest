@@ -161,15 +161,15 @@ export class XMLHttpRequest {
     let ssl = false,
       local = false;
     const url = parse(this.settings.url);
-    let host;
+    let host = '';
     // Determine the server
     switch (url.protocol) {
       case 'https:':
         ssl = true;
+        host = url.hostname || '';
         break;
-      // SSL & non-SSL both need host, no break here.
       case 'http:':
-        host = url.hostname;
+        host = url.hostname || '';
         break;
       case 'file:':
         local = true;
@@ -208,11 +208,13 @@ export class XMLHttpRequest {
       }
       return;
     }
+
     // Default to port 80. If accessing localhost on another port be sure
     // to use http://localhost:port/path
     const port = url.port || (ssl ? 443 : 80);
     // Add query string if one is used
     const uri = url.pathname + (url.search ? url.search : '');
+
     // Set the defaults if they haven't been set
     for (const name in defaultHeaders) {
       if (!this.headersCase[name.toLowerCase()]) {
@@ -264,6 +266,7 @@ export class XMLHttpRequest {
       agent: false,
       withCredentials: this.withCredentials,
     };
+
     // Reset error flag
     this.errorFlag = false;
     // Handle async requests
@@ -295,7 +298,7 @@ export class XMLHttpRequest {
           this.settings.url = resp.headers.location;
           const url = parse(this.settings.url);
           // Set host var in case it's used later
-          host = url.hostname;
+          host = url.hostname || '';
           // Options for the new request
           const newOptions = {
             hostname: url.hostname,
@@ -403,6 +406,7 @@ export class XMLHttpRequest {
           : '') +
         'req.end();';
       // Start the other Node Process, executing this string
+
       const syncProc = spawn(process.argv[0], ['-e', execString]);
       while (existsSync(syncFile)) {
         // Wait while the sync file is empty
