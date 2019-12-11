@@ -1,4 +1,4 @@
-import { XMLHttpRequest } from 'xmlhttprequest-w3c';
+const XMLHttpRequest = require('../lib').XMLHttpRequest;
 
 const xhr = new XMLHttpRequest();
 
