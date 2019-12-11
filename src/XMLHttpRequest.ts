@@ -9,6 +9,7 @@ import {
   existsSync,
   unlinkSync,
 } from 'fs';
+import { InvalidStateDOMException } from './DOMException';
 
 const forbiddenRequestHeaders = [
   'accept-charset',
@@ -132,8 +133,13 @@ export class XMLHttpRequest {
   }
 
   public set responseType(type: XMLHttpRequestResponseType) {
-    if (type !== 'document') {
-      // do something
+    if (type === 'document') {
+      return;
+    }
+    if (this._readyState === this.LOADING || this._readyState === this.DONE) {
+      throw new InvalidStateDOMException(
+        `the state is must not be loading or done`,
+      );
     }
     this._responseType = type;
   }
