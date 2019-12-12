@@ -1,7 +1,4 @@
-import { parse } from 'url';
 import http from 'http';
-import https from 'https';
-import { readFile, readFileSync } from 'fs';
 import {
   InvalidStateDOMException,
   SyntaxErrDOMException,
@@ -11,7 +8,7 @@ import * as Methods from './methods';
 import { URL } from 'url';
 import * as Headers from './headers';
 import { spawnSync } from 'child_process';
-import { Response, CoreOptions } from 'request';
+import request, { Response, CoreOptions } from 'request';
 
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
@@ -22,14 +19,14 @@ interface Settings {
   url: string;
   method: string;
   async: boolean;
-  user: string | null;
+  username: string | null;
   password: string | null;
 }
 
 export class XMLHttpRequest {
   private request: http.ClientRequest | undefined | null;
 
-  private response: http.IncomingMessage | undefined | null;
+  private response: request.Response | undefined;
 
   private settings: Settings;
 
@@ -82,7 +79,7 @@ export class XMLHttpRequest {
       url: '',
       method: 'GET',
       async: true,
-      user: null,
+      username: null,
       password: null,
     };
     this._responseText = '';
@@ -150,7 +147,7 @@ export class XMLHttpRequest {
     method: string,
     url: string,
     async = true,
-    user: string | null = null,
+    username: string | null = null,
     password: string | null = null,
   ): void {
     if (!Methods.isValid(method)) {
@@ -165,7 +162,7 @@ export class XMLHttpRequest {
         method: Methods.normalize(method),
         url: new URL(url).toString(),
         async,
-        user: user,
+        username: username,
         password: password,
       };
     } catch (err) {
@@ -178,220 +175,66 @@ export class XMLHttpRequest {
     this.setState(this.OPENED);
   }
 
-  /**
-   * Sends the request to the server.
-   *
-   * @param string data Optional data to send as request body.
-   */
-  public send(data?: string | null) {
+  public send(data?: Document | BodyInit | null) {
     if (this.readyState !== this.OPENED) {
-      throw new Error(
-        'INVALID_STATE_ERR: connection must be opened before send() is called',
-      );
+      throw new InvalidStateDOMException('state is not opened');
     }
     if (this.sendFlag) {
-      throw new Error('INVALID_STATE_ERR: send has already been called');
-    }
-    let ssl = false,
-      local = false;
-    const url = parse(this.settings.url);
-    let host = '';
-    // Determine the server
-    switch (url.protocol) {
-      case 'https:':
-        ssl = true;
-        host = url.hostname || '';
-        break;
-      case 'http:':
-        host = url.hostname || '';
-        break;
-      case 'file:':
-        local = true;
-        break;
-      case undefined:
-      case null:
-      case '':
-        host = 'localhost';
-        break;
-      default:
-        throw new Error('Protocol not supported.');
-    }
-    // Load files off the local filesystem (file://)
-    if (local) {
-      if (this.settings.method !== 'GET') {
-        throw new Error('XMLHttpRequest: Only GET method is supported');
-      }
-      if (this.settings.async) {
-        readFile(url.pathname || '', 'utf8', (error, data) => {
-          if (error) {
-            this.handleError(error);
-          } else {
-            this._status = 200;
-            this._responseText = data;
-            this.setState(this.DONE);
-          }
-        });
-      } else {
-        try {
-          this._responseText = readFileSync(url.pathname || '', 'utf8');
-          this._status = 200;
-          this.setState(this.DONE);
-        } catch (e) {
-          this.handleError(e);
-        }
-      }
-      return;
-    }
-
-    // Default to port 80. If accessing localhost on another port be sure
-    // to use http://localhost:port/path
-    const port = url.port || (ssl ? 443 : 80);
-    // Add query string if one is used
-    const uri = url.pathname + (url.search ? url.search : '');
-
-    // Set the defaults if they haven't been set
-    for (const name in defaultHeaders) {
-      if (!this.headersCase[name.toLowerCase()]) {
-        this.headers[name] = defaultHeaders[name];
-      }
-    }
-    // Set the Host header or the server may reject the request
-    this.headers.Host = host;
-    // IPv6 addresses must be escaped with brackets
-    if (
-      url.host && url.host.length > 0 ? url.host[0] : '' === ('[' as string)
-    ) {
-      this.headers.Host = '[' + this.headers.Host + ']';
-    }
-    if (!((ssl && port === 443) || port === 80)) {
-      this.headers.Host += ':' + url.port;
-    }
-    // Set Basic Auth if necessary
-    if (this.settings.user) {
-      if (typeof this.settings.password === 'undefined') {
-        this.settings.password = '';
-      }
-      const authBuf = new Buffer(
-        this.settings.user + ':' + this.settings.password,
+      throw new InvalidStateDOMException(
+        'cannot send when already in sending state',
       );
-      this.headers.Authorization = 'Basic ' + authBuf.toString('base64');
     }
-    // Set content length header
-    if (this.settings.method === 'GET' || this.settings.method === 'HEAD') {
-      data = null;
-    } else if (data) {
-      this.headers['Content-Length'] = Buffer.isBuffer(data)
-        ? data.length.toString()
-        : Buffer.byteLength(data).toString();
-      if (!this.getRequestHeader('Content-Type')) {
-        this.headers['Content-Type'] = 'text/plain;charset=UTF-8';
-      }
-    } else if (this.settings.method === 'POST') {
-      // For a post with no data set Content-Length: 0.
-      // This is required by buggy servers that don't meet the specs.
-      this.headers['Content-Length'] = '0';
-    }
-    const options = {
-      host: host,
-      port: port,
-      path: uri,
-      method: this.settings.method,
+    const { method, username, password } = this.settings;
+    const body = method === 'GET' || method === 'HEAD' ? null : data;
+    const url = new URL(this.settings.url);
+    const requestParams: CoreOptions = {
       headers: this.headers,
-      agent: false,
-      withCredentials: this.withCredentials,
+      method,
+      body,
+      auth:
+        username && password
+          ? {
+              username: username,
+              password: password,
+            }
+          : undefined,
+      followRedirect: true,
     };
 
-    // Reset error flag
     this.errorFlag = false;
-    // Handle async requests
     if (this.settings.async) {
-      // Use the proper protocol
-      const doRequest = ssl ? https.request : http.request;
-      // Request is being sent, set send flag
       this.sendFlag = true;
-      // As per spec, this is called here for historical reasons.
-      this.dispatchEvent('readystatechange');
+      let responseText = '';
+      request(url.toString(), requestParams)
+        .on('data', (data) => {
+          if (this.readyState === this.HEADERS_RECEIVED) {
+            this._readyState = this.LOADING;
+          }
+          responseText += data;
+          this.dispatchEvent('readystatechange');
+        })
+        .on('response', (resp) => {
+          this.response = resp;
+          this.setState(this.HEADERS_RECEIVED);
+        })
+        .on('complete', (resp) => {
+          this._status = resp.statusCode;
+          this._responseText = responseText;
+          this.sendFlag = false;
+          this.setState(this.DONE);
+        })
+        .on('error', (err) => {
+          this._status = 0;
+          this._statusText = '';
+          this._responseText = err.message;
+          this.errorFlag = true;
+          this.sendFlag = false;
+          this.setState(this.DONE);
+          this.dispatchEvent('error');
+        });
 
-      const errorHandler = (error) => {
-        this.handleError(error);
-      };
-      // Handler for the response
-      const responseHandler = (resp) => {
-        // Set response var to the response we got back
-        // This is so it remains accessable outside this scope
-        this.response = resp;
-        // Check for redirect
-        // @TODO Prevent looped redirects
-        if (
-          resp.statusCode === 301 ||
-          resp.statusCode === 302 ||
-          resp.statusCode === 303 ||
-          resp.statusCode === 307
-        ) {
-          // Change URL to the redirect location
-          this.settings.url = resp.headers.location;
-          const url = parse(this.settings.url);
-          // Set host var in case it's used later
-          host = url.hostname || '';
-          // Options for the new request
-          const newOptions = {
-            hostname: url.hostname,
-            port: url.port,
-            path: url.path,
-            method: resp.statusCode === 303 ? 'GET' : this.settings.method,
-            headers: this.headers,
-            withCredentials: this.withCredentials,
-          };
-          // Issue the new request
-          this.request = doRequest(newOptions, responseHandler).on(
-            'error',
-            errorHandler,
-          );
-          this.request.end();
-          // @TODO Check if an XHR event needs to be fired here
-          return;
-        }
-        resp.setEncoding('utf8');
-        this.setState(this.HEADERS_RECEIVED);
-        this._status = resp.statusCode;
-        resp.on('data', (chunk) => {
-          // Make sure there's some data
-          if (chunk) {
-            this._responseText += chunk;
-          }
-          // Don't emit state changes if the connection has been aborted.
-          if (this.sendFlag) {
-            this.setState(this.LOADING);
-          }
-        });
-        resp.on('end', () => {
-          if (this.sendFlag) {
-            // Discard the end event if the connection has been aborted
-            this.sendFlag = false;
-            this.setState(this.DONE);
-          }
-        });
-        resp.on('error', (error) => {
-          this.handleError(error);
-        });
-      };
-      // Create the request
-      this.request = doRequest(options, responseHandler).on(
-        'error',
-        errorHandler,
-      );
-      // Node 0.4 and later won't accept empty data. Make sure it's needed.
-      if (data) {
-        this.request.write(data);
-      }
-      this.request.end();
       this.dispatchEvent('loadstart');
     } else {
-      const url = new URL(this.settings.url);
-      const requestParams: CoreOptions = {
-        headers: this.headers,
-        body: data,
-      };
       const result = spawnSync(process.execPath, [
         require.resolve('./worker'),
         url.toString(),
@@ -399,7 +242,7 @@ export class XMLHttpRequest {
       ]);
       if (result.status === 0) {
         const resp: Response = JSON.parse(result.stdout.toString().trim());
-        this.response = resp as any;
+        this.response = resp;
         this._status = resp.statusCode;
         this._responseText = resp.body;
         this.setState(this.DONE);
