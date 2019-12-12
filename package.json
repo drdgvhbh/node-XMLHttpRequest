@@ -55,6 +55,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "request": "^2.88.0"
+    "@martin_hotell/rex-tils": "^2.1.1",
+    "immer": "^5.0.1",
+    "redux": "^4.0.4",
+    "request": "^2.88.0",
+    "reselect": "^4.0.0"
   }
 }

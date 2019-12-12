@@ -9,6 +9,8 @@ import { URL } from 'url';
 import * as Headers from './headers';
 import { spawnSync } from 'child_process';
 import request, { Response, CoreOptions } from 'request';
+import newReducer, { Actions } from './redux';
+import { createStore, Store } from 'redux';
 
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
@@ -22,6 +24,8 @@ interface Settings {
   username: string | null;
   password: string | null;
 }
+
+type RootState = ReturnType<ReturnType<typeof newReducer>>;
 
 export class XMLHttpRequest {
   private request: http.ClientRequest | undefined | null;
@@ -40,8 +44,6 @@ export class XMLHttpRequest {
 
   private _status: number;
 
-  private _readyState: number;
-
   private _responseXML: Document | null;
 
   private _responseText: string;
@@ -51,6 +53,10 @@ export class XMLHttpRequest {
   private _responseType: XMLHttpRequestResponseType;
 
   private _timeout: number;
+
+  private store: Store<RootState, Actions>;
+
+  private _readyState = (state: RootState) => state.readyState;
 
   private readonly listeners: Record<string, Function[]>;
 
@@ -71,7 +77,6 @@ export class XMLHttpRequest {
   constructor() {
     this.sendFlag = false;
     this.errorFlag = false;
-    this._readyState = this.UNSENT;
     this.headers = {};
     this.headersCase = {};
     this.listeners = {};
@@ -90,6 +95,7 @@ export class XMLHttpRequest {
     this._timeout = 0;
     this._statusText = '';
     this.withCredentials = false;
+    this.store = createStore(newReducer());
   }
 
   public get statusText(): string {
@@ -105,7 +111,7 @@ export class XMLHttpRequest {
   }
 
   public get readyState(): number {
-    return this._readyState;
+    return this._readyState(this.store.getState());
   }
 
   public get status(): number {
@@ -120,7 +126,7 @@ export class XMLHttpRequest {
     if (type === 'document') {
       return;
     }
-    if (this._readyState === this.LOADING || this._readyState === this.DONE) {
+    if (this.readyState === this.LOADING || this.readyState === this.DONE) {
       throw new InvalidStateDOMException(
         `the state is must not be loading or done`,
       );
@@ -209,7 +215,7 @@ export class XMLHttpRequest {
       request(url.toString(), requestParams)
         .on('data', (data) => {
           if (this.readyState === this.HEADERS_RECEIVED) {
-            this._readyState = this.LOADING;
+            this.store.dispatch(Actions.setState(this.LOADING));
           }
           responseText += data;
           this.dispatchEvent('readystatechange');
@@ -326,7 +332,8 @@ export class XMLHttpRequest {
       this.sendFlag = false;
       this.setState(this.DONE);
     }
-    this._readyState = this.UNSENT;
+    this.store.dispatch(Actions.setState(this.UNSENT));
+
     this.dispatchEvent('abort');
   }
 
@@ -379,9 +386,9 @@ export class XMLHttpRequest {
       : value;
   }
 
-  private setState(state: number): void {
+  private setState(state: 0 | 1 | 2 | 3 | 4): void {
     if (state == this.LOADING || this.readyState !== state) {
-      this._readyState = state;
+      this.store.dispatch(Actions.setState(state));
       if (
         this.settings.async ||
         this.readyState < this.OPENED ||
