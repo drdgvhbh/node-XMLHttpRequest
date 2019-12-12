@@ -23,12 +23,20 @@ const defaultHeaders = {
   Accept: '*/*',
 };
 
+interface Settings {
+  url: string;
+  method: string;
+  async: boolean;
+  user: string | null;
+  password: string | null;
+}
+
 export class XMLHttpRequest {
   private request: http.ClientRequest | undefined | null;
 
   private response: http.IncomingMessage | undefined | null;
 
-  private settings: Record<string, any>;
+  private settings: Settings;
 
   private headers: Record<string, string>;
 
@@ -75,7 +83,13 @@ export class XMLHttpRequest {
     this.headers = {};
     this.headersCase = {};
     this.listeners = {};
-    this.settings = {};
+    this.settings = {
+      url: '',
+      method: 'GET',
+      async: true,
+      user: null,
+      password: null,
+    };
     this._responseText = '';
     this._responseType = '';
     this._responseXML = null;
