@@ -53,5 +53,8 @@
     "lint": "eslint \"./**/*.{ts,js}\"",
     "lint:fix": "eslint --fix \"./**/*.{ts,js}\"",
     "test": "jest"
+  },
+  "dependencies": {
+    "request": "^2.88.0"
   }
 }
