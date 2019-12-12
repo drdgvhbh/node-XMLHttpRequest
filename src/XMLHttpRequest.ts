@@ -17,7 +17,7 @@ const defaultHeaders = {
 
 interface Settings {
   url: string;
-  method: string;
+  method: Methods.AllowedMethod;
   async: boolean;
   username: string | null;
   password: string | null;
@@ -150,16 +150,17 @@ export class XMLHttpRequest {
     username: string | null = null,
     password: string | null = null,
   ): void {
-    if (!Methods.isValid(method)) {
+    const normalizedMethod = Methods.normalize(method);
+    if (!Methods.isValid(normalizedMethod)) {
       throw new SyntaxErrDOMException('method is not a valid method');
     }
-    if (Methods.isForbidden(method)) {
+    if (Methods.isForbidden(normalizedMethod)) {
       throw new SecurityErrDOMException('method is forbidden');
     }
 
     try {
       this.settings = {
-        method: Methods.normalize(method),
+        method: normalizedMethod,
         url: new URL(url).toString(),
         async,
         username: username,

@@ -13,10 +13,20 @@ const methods: ReadonlySet<string> = new Set([
   ...forbiddenMethods,
 ]);
 
+export type ForbiddenMethod = 'CONNECT' | 'TRACE' | 'TRACK';
+export type AllowedMethod =
+  | 'DELETE'
+  | 'GET'
+  | 'HEAD'
+  | 'OPTIONS'
+  | 'POST'
+  | 'PUT';
+export type Method = AllowedMethod | ForbiddenMethod;
+
 export const normalize = (method: string): string => method.toUpperCase();
 
-export const isValid = (method: string): boolean =>
-  methods.has(normalize(method));
+export const isValid = (method: string): method is Method =>
+  methods.has(method);
 
-export const isForbidden = (method: string): boolean =>
-  forbiddenMethods.has(normalize(method));
+export const isForbidden = (method: Method): method is ForbiddenMethod =>
+  forbiddenMethods.has(method);
