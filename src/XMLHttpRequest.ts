@@ -11,6 +11,7 @@ import { spawnSync } from 'child_process';
 import request, { Response, CoreOptions } from 'request';
 import newReducer, { Actions } from './redux';
 import { createStore, Store } from 'redux';
+import { DOMEvent, XMLHttpRequestProgressEvent } from './DOMEvent';
 
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
@@ -23,6 +24,23 @@ interface Settings {
   async: boolean;
   username: string | null;
   password: string | null;
+}
+
+type EventCB = (this: XMLHttpRequest, ev: DOMEvent) => any;
+type XMLHttpRequestEventCB = (
+  this: XMLHttpRequest,
+  ev: ProgressEvent<XMLHttpRequestEventTarget>,
+) => any;
+
+interface Listeners {
+  readystatechange: Array<EventCB>;
+  abort: Array<XMLHttpRequestEventCB>;
+  error: Array<XMLHttpRequestEventCB>;
+  load: Array<XMLHttpRequestEventCB>;
+  loadend: Array<XMLHttpRequestEventCB>;
+  loadstart: Array<XMLHttpRequestEventCB>;
+  progress: Array<XMLHttpRequestEventCB>;
+  timeout: Array<XMLHttpRequestEventCB>;
 }
 
 type RootState = ReturnType<ReturnType<typeof newReducer>>;
@@ -58,7 +76,7 @@ export class XMLHttpRequest {
 
   private _readyState = (state: RootState) => state.readyState;
 
-  private readonly listeners: Record<string, Function[]>;
+  private readonly listeners: Listeners;
 
   public readonly UNSENT = 0;
 
@@ -70,7 +88,9 @@ export class XMLHttpRequest {
 
   public readonly DONE = 4;
 
-  public onreadystatechange: ((this: XMLHttpRequest, ev: Event) => any) | null;
+  public onreadystatechange:
+    | ((this: XMLHttpRequest, ev: DOMEvent) => any)
+    | null;
 
   public withCredentials: boolean;
 
@@ -79,7 +99,16 @@ export class XMLHttpRequest {
     this.errorFlag = false;
     this.headers = {};
     this.headersCase = {};
-    this.listeners = {};
+    this.listeners = {
+      readystatechange: [],
+      abort: [],
+      error: [],
+      load: [],
+      loadend: [],
+      loadstart: [],
+      progress: [],
+      timeout: [],
+    };
     this.settings = {
       url: '',
       method: 'GET',
@@ -218,7 +247,10 @@ export class XMLHttpRequest {
             this.store.dispatch(Actions.setState(this.LOADING));
           }
           responseText += data;
-          this.dispatchEvent('readystatechange');
+          this.dispatchEvent(
+            'readystatechange',
+            new DOMEvent('readystatechange'),
+          );
         })
         .on('response', (resp) => {
           this.response = resp;
@@ -237,10 +269,13 @@ export class XMLHttpRequest {
           this.errorFlag = true;
           this.sendFlag = false;
           this.setState(this.DONE);
-          this.dispatchEvent('error');
+          this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
         });
 
-      this.dispatchEvent('loadstart');
+      this.dispatchEvent(
+        'loadstart',
+        new XMLHttpRequestProgressEvent('loadstart'),
+      );
     } else {
       const result = spawnSync(process.execPath, [
         require.resolve('./worker'),
@@ -259,7 +294,7 @@ export class XMLHttpRequest {
         this._responseText = result.stderr.toString();
         this.errorFlag = true;
         this.setState(this.DONE);
-        this.dispatchEvent('error');
+        this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
       }
     }
   }
@@ -311,7 +346,7 @@ export class XMLHttpRequest {
     this._responseText = error.stack;
     this.errorFlag = true;
     this.setState(this.DONE);
-    this.dispatchEvent('error');
+    this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
   }
 
   public abort(): void {
@@ -334,33 +369,57 @@ export class XMLHttpRequest {
     }
     this.store.dispatch(Actions.setState(this.UNSENT));
 
-    this.dispatchEvent('abort');
+    this.dispatchEvent('abort', new XMLHttpRequestProgressEvent('abort'));
   }
 
-  public addEventListener(event: string, callback: Function): void {
-    if (!(event in this.listeners)) {
-      this.listeners[event] = [];
+  public addEventListener<K extends keyof XMLHttpRequestEventMap>(
+    type: K,
+    listener: (this: XMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any,
+    _options?: boolean | AddEventListenerOptions,
+  ): void {
+    if (!(type in this.listeners)) {
+      this.listeners[type] = [];
     }
     // Currently allows duplicate callbacks. Should it?
-    this.listeners[event].push(callback);
+    this.listeners[type].push(listener as any);
   }
 
-  public removeEventListener(event: string, callback: Function): void {
-    if (event in this.listeners) {
+  public removeEventListener<K extends keyof XMLHttpRequestEventMap>(
+    type: K,
+    listener: (this: XMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any,
+    _options?: boolean | EventListenerOptions,
+  ): void {
+    if (type in this.listeners) {
       // Filter will return a new array with the callback removed
-      this.listeners[event] = this.listeners[event].filter(function(ev) {
-        return ev !== callback;
+      this.listeners[type] = (this.listeners[type] as any[]).filter(function(
+        ev,
+      ) {
+        return ev !== listener;
       });
     }
   }
 
-  public dispatchEvent(event: string): void {
-    if (typeof this['on' + event] === 'function') {
-      this['on' + event]();
+  private dispatchEvent<K extends keyof XMLHttpRequestEventMap>(
+    type: K,
+    event: XMLHttpRequestEventMap[K],
+  ): void {
+    switch (type) {
+      case 'readystatechange':
+        if (this.onreadystatechange) {
+          this.onreadystatechange(event);
+        }
+        break;
+      default:
+        break;
     }
-    if (event in this.listeners) {
-      for (let i = 0, len = this.listeners[event].length; i < len; i++) {
-        this.listeners[event][i].call(this);
+
+    for (const listener of this.listeners[type]) {
+      const listenerType = (_l: typeof listener, type: K): _l is EventCB =>
+        type === 'readystatechange';
+      if (listenerType(listener, type)) {
+        listener.call(this, event);
+      } else {
+        listener.call(this, event as any);
       }
     }
   }
@@ -394,12 +453,18 @@ export class XMLHttpRequest {
         this.readyState < this.OPENED ||
         this.readyState === this.DONE
       ) {
-        this.dispatchEvent('readystatechange');
+        this.dispatchEvent(
+          'readystatechange',
+          new DOMEvent('readystatechange'),
+        );
       }
       if (this.readyState === this.DONE && !this.errorFlag) {
-        this.dispatchEvent('load');
+        this.dispatchEvent('load', new XMLHttpRequestProgressEvent('load'));
         // @TODO figure out InspectorInstrumentation::didLoadXHR(cookie)
-        this.dispatchEvent('loadend');
+        this.dispatchEvent(
+          'loadend',
+          new XMLHttpRequestProgressEvent('loadend'),
+        );
       }
     }
   }
