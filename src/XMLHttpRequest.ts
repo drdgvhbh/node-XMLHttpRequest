@@ -1,14 +1,7 @@
 import { parse } from 'url';
-import { spawn } from 'child_process';
 import http from 'http';
 import https from 'https';
-import {
-  readFile,
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  unlinkSync,
-} from 'fs';
+import { readFile, readFileSync } from 'fs';
 import {
   InvalidStateDOMException,
   SyntaxErrDOMException,
@@ -17,6 +10,8 @@ import {
 import * as Methods from './methods';
 import { URL } from 'url';
 import * as Headers from './headers';
+import { spawnSync } from 'child_process';
+import { Response, CoreOptions } from 'request';
 
 const defaultHeaders = {
   'User-Agent': 'node-XMLHttpRequest',
@@ -392,76 +387,29 @@ export class XMLHttpRequest {
       this.request.end();
       this.dispatchEvent('loadstart');
     } else {
-      // Synchronous
-      // Create a temporary file for communication with the other Node process
-      const contentFile = '.node-xmlhttprequest-content-' + process.pid;
-      const syncFile = '.node-xmlhttprequest-sync-' + process.pid;
-      writeFileSync(syncFile, '', 'utf8');
-      // The async request the other Node process executes
-      const execString =
-        "var http = require('http'), https = require('https'), fs = require('fs');" +
-        'var doRequest = http' +
-        (ssl ? 's' : '') +
-        '.request;' +
-        'var options = ' +
-        JSON.stringify(options) +
-        ';' +
-        "var responseText = '';" +
-        'var req = doRequest(options, function(response) {' +
-        "response.setEncoding('utf8');" +
-        "response.on('data', function(chunk) {" +
-        '  responseText += chunk;' +
-        '});' +
-        "response.on('end', function() {" +
-        "fs.writeFileSync('" +
-        contentFile +
-        "', JSON.stringify({err: null, data: {statusCode: response.statusCode, headers: response.headers, text: responseText}}), 'utf8');" +
-        "fs.unlinkSync('" +
-        syncFile +
-        "');" +
-        '});' +
-        "response.on('error', function(error) {" +
-        "fs.writeFileSync('" +
-        contentFile +
-        "', JSON.stringify({err: error}), 'utf8');" +
-        "fs.unlinkSync('" +
-        syncFile +
-        "');" +
-        '});' +
-        "}).on('error', function(error) {" +
-        "fs.writeFileSync('" +
-        contentFile +
-        "', JSON.stringify({err: error}), 'utf8');" +
-        "fs.unlinkSync('" +
-        syncFile +
-        "');" +
-        '});' +
-        (data
-          ? "req.write('" +
-            JSON.stringify(data)
-              .slice(1, -1)
-              .replace(/'/g, "\\'") +
-            "');"
-          : '') +
-        'req.end();';
-      // Start the other Node Process, executing this string
-
-      const syncProc = spawn(process.argv[0], ['-e', execString]);
-      while (existsSync(syncFile)) {
-        // Wait while the sync file is empty
-      }
-      const resp = JSON.parse(readFileSync(contentFile, 'utf8'));
-      // Kill the child process once the file has data
-      syncProc.stdin.end();
-      // Remove the temporary file
-      unlinkSync(contentFile);
-      if (resp.err) {
-        this.handleError(resp.err);
-      } else {
-        this.response = resp.data;
-        this._status = resp.data.statusCode;
-        this._responseText = resp.data.text;
+      const url = new URL(this.settings.url);
+      const requestParams: CoreOptions = {
+        headers: this.headers,
+        body: data,
+      };
+      const result = spawnSync(process.execPath, [
+        require.resolve('./worker'),
+        url.toString(),
+        JSON.stringify(requestParams),
+      ]);
+      if (result.status === 0) {
+        const resp: Response = JSON.parse(result.stdout.toString().trim());
+        this.response = resp as any;
+        this._status = resp.statusCode;
+        this._responseText = resp.body;
         this.setState(this.DONE);
+      } else {
+        this._status = 0;
+        this._statusText = '';
+        this._responseText = result.stderr.toString();
+        this.errorFlag = true;
+        this.setState(this.DONE);
+        this.dispatchEvent('error');
       }
     }
   }

@@ -4,4 +4,5 @@ module.exports = {
   transform: {
     '^.+\\.(js|jsx)?$': 'babel-jest',
   },
+  modulePathIgnorePatterns: ['dummy-server-worker'],
 };
