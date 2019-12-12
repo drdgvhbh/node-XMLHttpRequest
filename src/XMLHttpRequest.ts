@@ -185,12 +185,12 @@ export class XMLHttpRequest {
    */
   public send(data?: string | null) {
     if (this.readyState !== this.OPENED) {
-      throw new Error(
-        'INVALID_STATE_ERR: connection must be opened before send() is called',
-      );
+      throw new InvalidStateDOMException('state is not opened');
     }
     if (this.sendFlag) {
-      throw new Error('INVALID_STATE_ERR: send has already been called');
+      throw new InvalidStateDOMException(
+        'cannot send when already in sending state',
+      );
     }
     let ssl = false,
       local = false;
