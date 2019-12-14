@@ -1,4 +1,3 @@
-import http from 'http';
 import {
   InvalidStateDOMException,
   SyntaxErrDOMException,
@@ -9,14 +8,18 @@ import { URL } from 'url';
 import * as Headers from './headers';
 import { spawnSync } from 'child_process';
 import request, { Response, CoreOptions } from 'request';
-import newReducer, { Actions } from './redux';
-import { createStore, Store } from 'redux';
+import newReducer from './redux';
+import { createStore, Store, applyMiddleware } from 'redux';
 import { DOMEvent, XMLHttpRequestProgressEvent } from './DOMEvent';
-
-const defaultHeaders = {
-  'User-Agent': 'node-XMLHttpRequest',
-  Accept: '*/*',
-};
+import { createEpicMiddleware } from 'redux-observable';
+import * as fromActions from './actions';
+import { rootEpic } from './epics';
+import {
+  onListenersSelector,
+  flagsSelector,
+  sendFlagSelector,
+  errorFlagSelector,
+} from './selectors';
 
 interface Settings {
   url: string;
@@ -26,39 +29,18 @@ interface Settings {
   password: string | null;
 }
 
-type EventCB = (this: XMLHttpRequest, ev: DOMEvent) => any;
-type XMLHttpRequestEventCB = (
-  this: XMLHttpRequest,
-  ev: ProgressEvent<XMLHttpRequestEventTarget>,
-) => any;
-
-interface Listeners {
-  readystatechange: Array<EventCB>;
-  abort: Array<XMLHttpRequestEventCB>;
-  error: Array<XMLHttpRequestEventCB>;
-  load: Array<XMLHttpRequestEventCB>;
-  loadend: Array<XMLHttpRequestEventCB>;
-  loadstart: Array<XMLHttpRequestEventCB>;
-  progress: Array<XMLHttpRequestEventCB>;
-  timeout: Array<XMLHttpRequestEventCB>;
-}
-
 type RootState = ReturnType<ReturnType<typeof newReducer>>;
 
-export class XMLHttpRequest {
-  private request: http.ClientRequest | undefined | null;
+class NodeXMLHttpRequest {
+  private request: request.Request | undefined;
 
-  private response: request.Response | undefined;
+  private _response: request.Response | undefined;
 
   private settings: Settings;
 
   private headers: Record<string, string>;
 
   private readonly headersCase: Record<string, string>;
-
-  private sendFlag: boolean;
-
-  private errorFlag: boolean;
 
   private _status: number;
 
@@ -72,11 +54,9 @@ export class XMLHttpRequest {
 
   private _timeout: number;
 
-  private store: Store<RootState, Actions>;
+  private store: Store<RootState, fromActions.Actions>;
 
   private _readyState = (state: RootState) => state.readyState;
-
-  private readonly listeners: Listeners;
 
   public readonly UNSENT = 0;
 
@@ -88,27 +68,42 @@ export class XMLHttpRequest {
 
   public readonly DONE = 4;
 
-  public onreadystatechange:
-    | ((this: XMLHttpRequest, ev: DOMEvent) => any)
-    | null;
+  public readonly upload: XMLHttpRequestUpload;
+
+  public onabort:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public onerror:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public onload:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public onloadend:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public onloadstart:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public onprogress:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
+
+  public ontimeout:
+    | ((this: XMLHttpRequest, ev: ProgressEvent) => any)
+    | null = null;
 
   public withCredentials: boolean;
 
   constructor() {
-    this.sendFlag = false;
-    this.errorFlag = false;
     this.headers = {};
     this.headersCase = {};
-    this.listeners = {
-      readystatechange: [],
-      abort: [],
-      error: [],
-      load: [],
-      loadend: [],
-      loadstart: [],
-      progress: [],
-      timeout: [],
-    };
+    this.upload = null as any; // TODO
     this.settings = {
       url: '',
       method: 'GET',
@@ -119,12 +114,33 @@ export class XMLHttpRequest {
     this._responseText = '';
     this._responseType = '';
     this._responseXML = null;
-    this.onreadystatechange = null;
     this._status = 0;
     this._timeout = 0;
     this._statusText = '';
     this.withCredentials = false;
-    this.store = createStore(newReducer());
+
+    const epicMiddleware = createEpicMiddleware();
+    this.store = createStore(newReducer(), applyMiddleware(epicMiddleware));
+
+    epicMiddleware.run(rootEpic as any);
+  }
+
+  public get response(): any {
+    return this._response;
+  }
+
+  public get onreadystatechange():
+    | ((this: XMLHttpRequest, ev: DOMEvent) => any)
+    | null {
+    return onListenersSelector(this.store.getState()).readystatechange;
+  }
+
+  public set onreadystatechange(
+    cb: ((this: XMLHttpRequest, ev: DOMEvent) => any) | null,
+  ) {
+    this.store.dispatch(
+      fromActions.Actions.setCallbackHandler({ type: 'readystatechange', cb }),
+    );
   }
 
   public get statusText(): string {
@@ -178,6 +194,10 @@ export class XMLHttpRequest {
     this._timeout = t;
   }
 
+  public overrideMimeType(_mime: string): void {
+    throw new Error('not implemented');
+  }
+
   public open(
     method: string,
     url: string,
@@ -206,8 +226,9 @@ export class XMLHttpRequest {
     }
 
     this.abort();
-    this.errorFlag = false;
-
+    this.store.dispatch(
+      fromActions.Actions.setFlag({ type: 'error', value: false }),
+    );
     this.setState(this.OPENED);
   }
 
@@ -215,7 +236,7 @@ export class XMLHttpRequest {
     if (this.readyState !== this.OPENED) {
       throw new InvalidStateDOMException('state is not opened');
     }
-    if (this.sendFlag) {
+    if (flagsSelector(this.store.getState()).send) {
       throw new InvalidStateDOMException(
         'cannot send when already in sending state',
       );
@@ -237,45 +258,56 @@ export class XMLHttpRequest {
       followRedirect: true,
     };
 
-    this.errorFlag = false;
+    this.store.dispatch(
+      fromActions.Actions.setFlag({ type: 'error', value: false }),
+    );
     if (this.settings.async) {
-      this.sendFlag = true;
+      this.store.dispatch(
+        fromActions.Actions.setFlag({ type: 'send', value: true }),
+      );
       let responseText = '';
-      request(url.toString(), requestParams)
+      this.request = request(url.toString(), requestParams)
         .on('data', (data) => {
           if (this.readyState === this.HEADERS_RECEIVED) {
-            this.store.dispatch(Actions.setState(this.LOADING));
+            this.setState(this.LOADING);
+          } else {
+            this.store.dispatch(
+              fromActions.Actions.dispatchEvent({
+                type: 'readystatechange',
+                req: this,
+              }),
+            );
           }
           responseText += data;
-          this.dispatchEvent(
-            'readystatechange',
-            new DOMEvent('readystatechange'),
-          );
         })
         .on('response', (resp) => {
-          this.response = resp;
+          this._response = resp;
           this.setState(this.HEADERS_RECEIVED);
         })
         .on('complete', (resp) => {
           this._status = resp.statusCode;
           this._responseText = responseText;
-          this.sendFlag = false;
+          this.store.dispatch(
+            fromActions.Actions.setFlag({ type: 'send', value: false }),
+          );
           this.setState(this.DONE);
         })
         .on('error', (err) => {
           this._status = 0;
           this._statusText = '';
           this._responseText = err.message;
-          this.errorFlag = true;
-          this.sendFlag = false;
+          this.store.dispatch(
+            fromActions.Actions.setFlag({ type: 'error', value: true }),
+          );
+          this.store.dispatch(
+            fromActions.Actions.setFlag({ type: 'send', value: false }),
+          );
+
           this.setState(this.DONE);
-          this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
+          this.dispatchEvent(new XMLHttpRequestProgressEvent('error'));
         });
 
-      this.dispatchEvent(
-        'loadstart',
-        new XMLHttpRequestProgressEvent('loadstart'),
-      );
+      this.dispatchEvent(new XMLHttpRequestProgressEvent('loadstart'));
     } else {
       const result = spawnSync(process.execPath, [
         require.resolve('./worker'),
@@ -284,7 +316,7 @@ export class XMLHttpRequest {
       ]);
       if (result.status === 0) {
         const resp: Response = JSON.parse(result.stdout.toString().trim());
-        this.response = resp;
+        this._response = resp;
         this._status = resp.statusCode;
         this._responseText = resp.body;
         this.setState(this.DONE);
@@ -292,9 +324,11 @@ export class XMLHttpRequest {
         this._status = 0;
         this._statusText = '';
         this._responseText = result.stderr.toString();
-        this.errorFlag = true;
+        this.store.dispatch(
+          fromActions.Actions.setFlag({ type: 'error', value: true }),
+        );
         this.setState(this.DONE);
-        this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
+        this.dispatchEvent(new XMLHttpRequestProgressEvent('error'));
       }
     }
   }
@@ -306,11 +340,6 @@ export class XMLHttpRequest {
     return '';
   }
 
-  /**
-   * Gets all the response headers.
-   *
-   * @return string A string with all response headers separated by CR+LF
-   */
   public getAllResponseHeaders() {
     if (this.readyState < this.HEADERS_RECEIVED || this.errorFlag) {
       return '';
@@ -333,95 +362,87 @@ export class XMLHttpRequest {
       this.response &&
       this.response.headers &&
       this.response.headers[header.toLowerCase()] &&
-      !this.errorFlag
+      !flagsSelector(this.store.getState()).error
     ) {
       return this.response.headers[header.toLowerCase()];
     }
     return null;
   }
 
-  public handleError(error): void {
-    this._status = 0;
-    this._statusText = error;
-    this._responseText = error.stack;
-    this.errorFlag = true;
-    this.setState(this.DONE);
-    this.dispatchEvent('error', new XMLHttpRequestProgressEvent('error'));
-  }
-
   public abort(): void {
     if (this.request) {
       this.request.abort();
-      this.request = null;
     }
-    this.headers = defaultHeaders;
+    this.headers = {};
     this._status = 0;
     this._responseText = '';
     this._responseXML = null;
-    this.errorFlag = true;
+    this.store.dispatch(
+      fromActions.Actions.setFlag({ type: 'error', value: true }),
+    );
     if (
       this.readyState !== this.UNSENT &&
       (this.readyState !== this.OPENED || this.sendFlag) &&
       this.readyState !== this.DONE
     ) {
-      this.sendFlag = false;
+      this.store.dispatch(
+        fromActions.Actions.setFlag({ type: 'send', value: false }),
+      );
       this.setState(this.DONE);
     }
-    this.store.dispatch(Actions.setState(this.UNSENT));
+    this.setState(this.UNSENT);
 
-    this.dispatchEvent('abort', new XMLHttpRequestProgressEvent('abort'));
+    this.dispatchEvent(new XMLHttpRequestProgressEvent('abort'));
   }
 
   public addEventListener<K extends keyof XMLHttpRequestEventMap>(
     type: K,
-    listener: (this: XMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any,
+    listener: (this: any, ev: XMLHttpRequestEventMap[K]) => any,
     _options?: boolean | AddEventListenerOptions,
   ): void {
-    if (!(type in this.listeners)) {
-      this.listeners[type] = [];
-    }
-    // Currently allows duplicate callbacks. Should it?
-    this.listeners[type].push(listener as any);
+    this.store.dispatch(
+      fromActions.Actions.addListener({ type, listener }) as any,
+    );
   }
 
   public removeEventListener<K extends keyof XMLHttpRequestEventMap>(
     type: K,
-    listener: (this: XMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any,
+    listener: (this: NodeXMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any,
     _options?: boolean | EventListenerOptions,
   ): void {
-    if (type in this.listeners) {
-      // Filter will return a new array with the callback removed
-      this.listeners[type] = (this.listeners[type] as any[]).filter(function(
-        ev,
-      ) {
-        return ev !== listener;
-      });
-    }
+    this.store.dispatch(
+      fromActions.Actions.removeListener({ type, listener }) as any,
+    );
   }
 
-  private dispatchEvent<K extends keyof XMLHttpRequestEventMap>(
-    type: K,
-    event: XMLHttpRequestEventMap[K],
-  ): void {
-    switch (type) {
-      case 'readystatechange':
-        if (this.onreadystatechange) {
-          this.onreadystatechange(event);
-        }
-        break;
-      default:
-        break;
+  public dispatchEvent(event: Event): boolean {
+    if (
+      event.type !== 'readystatechange' &&
+      event.type !== 'abort' &&
+      event.type !== 'error' &&
+      event.type !== 'load' &&
+      event.type !== 'loadend' &&
+      event.type !== 'loadstart' &&
+      event.type !== 'progress' &&
+      event.type !== 'timeout'
+    ) {
+      return true;
     }
+    this.store.dispatch(
+      fromActions.Actions.dispatchEvent({
+        type: event.type,
+        req: this,
+      }),
+    );
+    return true;
+  }
 
-    for (const listener of this.listeners[type]) {
-      const listenerType = (_l: typeof listener, type: K): _l is EventCB =>
-        type === 'readystatechange';
-      if (listenerType(listener, type)) {
-        listener.call(this, event);
-      } else {
-        listener.call(this, event as any);
-      }
-    }
+  private get errorFlag(): boolean {
+    return errorFlagSelector(this.store.getState());
+  }
+
+  private get sendFlag(): boolean {
+    return sendFlagSelector(this.store.getState());
   }
 
   public setRequestHeader(header: string, value: string): void {
@@ -429,9 +450,6 @@ export class XMLHttpRequest {
       throw new InvalidStateDOMException('state is not opened');
     }
 
-    /*     if (!this.isAllowedHttpHeader(header)) {
-      throw new Error('Refused to set unsafe header "' + header + '"');
-    } */
     if (this.sendFlag) {
       throw new Error('INVALID_STATE_ERR: send flag is true');
     }
@@ -446,26 +464,8 @@ export class XMLHttpRequest {
   }
 
   private setState(state: 0 | 1 | 2 | 3 | 4): void {
-    if (state == this.LOADING || this.readyState !== state) {
-      this.store.dispatch(Actions.setState(state));
-      if (
-        this.settings.async ||
-        this.readyState < this.OPENED ||
-        this.readyState === this.DONE
-      ) {
-        this.dispatchEvent(
-          'readystatechange',
-          new DOMEvent('readystatechange'),
-        );
-      }
-      if (this.readyState === this.DONE && !this.errorFlag) {
-        this.dispatchEvent('load', new XMLHttpRequestProgressEvent('load'));
-        // @TODO figure out InspectorInstrumentation::didLoadXHR(cookie)
-        this.dispatchEvent(
-          'loadend',
-          new XMLHttpRequestProgressEvent('loadend'),
-        );
-      }
-    }
+    this.store.dispatch(fromActions.Actions.setState({ state, req: this }));
   }
 }
+
+export { NodeXMLHttpRequest as XMLHttpRequest };

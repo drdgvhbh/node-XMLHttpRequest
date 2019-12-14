@@ -1,4 +1,4 @@
-import { XMLHttpRequest } from '../src/XMLHttpRequest';
+import { XMLHttpRequest } from '../src';
 
 test('constants', () => {
   const xhr = new XMLHttpRequest();
